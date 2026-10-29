@@ -147,8 +147,19 @@ Whether it works
   - The capability claim is "first working step", not "ready for rubble".
 
 2.5 SUBMISSION PACKAGE (checklist)
-  [ ] 3-minute video (Section 4)
-  [ ] Public or judge-accessible GitHub repo, clean README
+  Organiser guidance (received Oct 28): a PUBLIC GitHub repo with setup
+  instructions is sufficient; the project must be runnable from the repo's
+  setup instructions plus the 3-minute demo video; no hosted version is
+  required; the README must explain how to supply a Meta Model API key
+  (e.g., .env.example); never commit your own key; the video must show the
+  API-dependent features working.
+  [ ] 3-minute video (Section 4) showing SAM 3.1, Muse and voice features
+      working live
+  [ ] PUBLIC GitHub repo (private during the build; switch to public on
+      submission day after a secrets scan), clean README
+  [ ] .env.example in the repo; README "Supply your Meta Model API key"
+      section; .env git-ignored
+  [ ] Setup instructions tested from a fresh clone on a clean machine/venv
   [ ] Architecture diagram (one image)
   [ ] Trial results table (predictions vs outcomes)
   [ ] Setup instructions that a judge could follow
@@ -706,7 +717,7 @@ Day 3 (Oct 28) feasibility tests - ALL PASSED or adjusted:
 
 10.2 DAY-BY-DAY (each day ends with a working, committed system)
   Thu Oct 29  FOUNDATION + CORE
-    - Eligibility check (O5/R2) first thing.
+    - Skim the Official Rules for submission requirements (O5).
     - git init + private GitHub repo; package layout (5.4); config, log,
       run folders; move test scripts to scripts/.
     - Re-run the Day-3 smoke checks as repo scripts (SAM call, Muse call,
@@ -756,7 +767,10 @@ Day 3 (Oct 28) feasibility tests - ALL PASSED or adjusted:
     - 3+ continuous takes per act; second camera; OBS; captions.
     - Rough cut of the video.
   Wed Nov 4   SUBMIT
-    - Final edit, README final, repo review, submit by NOON ET.
+    - Final edit, README final, repo review.
+    - Secrets scan of the full git history (no keys ever committed), fresh
+      clone + setup test, then switch the repo to PUBLIC.
+    - Submit by NOON ET.
     - Afternoon buffer for upload problems. Hard deadline 9:00 PM ET.
   Nov 5-8     Prepare live finals: repeatable demo checklist, spare
               tower, charged devices, network fallback.
@@ -875,9 +889,7 @@ These are binding for every contributor and every coding agent.
      reality                                 calibration trials      (before freezing); use
                                              by Fri                  measured block offsets;
                                                                      show misses honestly
-  R2 Eligibility: rules exclude       HIGH   Official Rules wording  Read rules now; ask
-     "government-affiliated                  covers consultants      organisers in Discord
-     individuals"                            serving government      before investing more
+  R2 Eligibility                      CLOSED Owner decision Oct 28: treated as eligible.
   R3 Glasses image too weak for       MED    Stage B recall < 90%    Per-level crops; get
      slot check                                                      closer; tripod does the
                                                                      scan, glasses only ask
@@ -915,8 +927,9 @@ These are binding for every contributor and every coding agent.
      Recommendation: test both Sat; pick the clearer one; disclose.
   O3 Second camera for the wide shot (borrow a phone/webcam).
   O4 Survivor prop: small figure; position in a void near the base.
-  O5 Read the Official Rules today: eligibility (R2), finalist count,
-     exact submission requirements (video length, repo, licence).
+  O5 Submission requirements: ANSWERED by organisers (2.5). Still open:
+     finalist count, licence choice for the public repo (recommend MIT).
+     Eligibility: owner decision - treated as eligible (R2 closed).
 
 ==============================================================================
 15. APPENDIX
@@ -985,6 +998,9 @@ REVISION HISTORY
                   (D18, 4.1, 6.8).
                 - Slot-reconstruction accuracy test added (M9, 12.3a).
                 - Finalist count marked as unverified (2.1, O5).
+                - Eligibility: owner decision, treated as eligible (R2).
+                - Organiser submission guidance added (2.5): public repo,
+                  .env.example, runnable setup, video shows API features.
   Not adopted: none of the review's points were rejected. One nuance: the
   layer check and per-block check agree for perfectly aligned towers; the
   per-block check matters for offsets, so both are kept.
