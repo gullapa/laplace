@@ -240,8 +240,11 @@ CUT (and why)
            structure, know what it can't see, and predict what happens
            before anyone touches it? Here's an unedited test."
 CORE VERSION (built first; must work on its own)
-0:15-0:50  SEE. Tripod scan builds the twin; ghost blocks turn solid as
-           slots are confirmed. Evidence map appears: blocks marked
+0:15-0:50  SEE. Tripod scans the FRONT only and builds the twin; ghost
+           blocks turn solid as slots are confirmed; blocks hidden behind
+           front blocks stay ghosts. (Scanning front + side first would
+           leave nothing for the AI to ask about - the side view must come
+           from the operator's glasses when the AI requests it.) Evidence map appears: blocks marked
            "predicts stand", "predicts fall", "need more information" with
            a glowing pointer to the side the AI needs.
 0:50-1:40  FORESEE. Operator (glasses on): "What if I pull this one?"
@@ -1001,6 +1004,10 @@ REVISION HISTORY
                 - Eligibility: owner decision, treated as eligible (R2).
                 - Organiser submission guidance added (2.5): public repo,
                   .env.example, runnable setup, video shows API features.
+                - Storyboard: tripod scans FRONT only in the core demo so the
+                  hidden slots give the AI something real to ask about (4.1).
+                - UI spec added: docs/LAPLACE_UI_SPEC.txt with mock event
+                  stream laplace/ui/mock/mock_scenario.jsonl.
   Not adopted: none of the review's points were rejected. One nuance: the
   layer check and per-block check agree for perfectly aligned towers; the
   per-block check matters for offsets, so both are kept.

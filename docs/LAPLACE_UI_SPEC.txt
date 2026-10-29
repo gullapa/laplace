@@ -1,0 +1,711 @@
+==============================================================================
+LAPLACE - UI SPECIFICATION
+"The screen that shows a machine foreseeing the physical future"
+==============================================================================
+Version : 1.0 - Thu Oct 29, 2026
+Owner   : Aj
+Parent  : docs/LAPLACE_DESIGN_AND_BUILD_PLAN.txt (v1.1). If this document
+          and the design document disagree on behaviour, the design
+          document wins; on visuals, this document wins.
+Companion files:
+  laplace/ui/mock/mock_scenario.jsonl  - a complete demo run as UI events
+                                         (DEV DATA, built from real SAM 3.1
+                                         boxes on our reference photos)
+  test_photos/clean_front.jpg, clean_side.jpg - images the mock refers to
+
+------------------------------------------------------------------------------
+HOW TO USE THIS DOCUMENT (for any human or LLM building the UI)
+------------------------------------------------------------------------------
+1. Read Sections 1-3 (purpose, principles, what must never be lost).
+2. Build the layout and components from Sections 4-8.
+3. Implement the key moments exactly as choreographed in Section 9.
+4. Drive everything from the event contract in Section 10. The UI must
+   run with NO backend by replaying mock_scenario.jsonl (Section 11).
+5. Check your work against the acceptance criteria in Section 13.
+Do not invent data, outcomes, numbers or "AI thoughts". The UI displays
+events it receives - nothing else. (Section 2, rule 1.)
+
+------------------------------------------------------------------------------
+CONTENTS
+------------------------------------------------------------------------------
+ 1. Purpose and audience
+ 2. Design principles and honesty rules
+ 3. Information that must never be lost
+ 4. Screen layout (1920 x 1080)
+ 5. Visual language (colour, type, shape, labels, motion)
+ 6. Component specs: top bar, Reality pane, Twin pane, Mind pane,
+    caption band, verdict strip, overlays
+ 7. The 3D twin in detail (geometry, states, camera, effects)
+ 8. Operator controls (keyboard / mouse)
+ 9. Choreography of the signature moments
+10. Event contract (WebSocket messages, both directions)
+11. Mock replay mode and dev workflow
+12. Technical requirements (stack, files, performance, robustness)
+13. Acceptance criteria and the "10-second judge test"
+14. Out of scope / do not build
+15. Glossary of on-screen terms
+
+==============================================================================
+1. PURPOSE AND AUDIENCE
+==============================================================================
+The UI has three jobs, in this order:
+  A. Let a judge understand, within seconds and without narration, that:
+       - a real structure is being observed,
+       - the AI knows what it can and cannot see,
+       - it made a specific prediction BEFORE the physical action,
+       - reality then agreed (or did not), and
+       - every claim is backed by visible evidence.
+  B. Look spectacular on a 3-minute screen recording at 1080p.
+  C. Be a working operator console during the live demo.
+
+Audience: hackathon judges watching a recorded video (often small, often
+on mute), and live judges on Nov 9 (screen share). Assume they know AI but
+not our project, and give each screen state 3-5 seconds of attention.
+
+Tone: "mission control for physical foresight". Cinematic sci-fi, but
+every glowing element carries real information. Clarity beats decoration.
+
+==============================================================================
+2. DESIGN PRINCIPLES AND HONESTY RULES
+==============================================================================
+P1  Every pixel of "AI" output comes from an event. No canned text, no
+    fake progress, no invented thoughts, no placeholder numbers.
+P2  Source is always labelled. Every visual carries one of these tags:
+      CAMERA            real image from tripod phone or glasses
+      MODEL ASSESSMENT  output of the stability model
+      SIMULATION        illustrative motion of a predicted outcome
+      ESTIMATED         SAM 3D reconstruction (visual only)
+      OPERATOR          something a human confirmed
+P3  Uncertainty is shown, never hidden. UNKNOWN slots look different from
+    observed ones. INCONCLUSIVE is a first-class result, not a failure.
+P4  Mismatches are shown with equal prominence to matches. The session
+    scoreboard always shows mismatches and inconclusives.
+P5  One idea per moment. During a key moment, everything not related to it
+    dims to 40% opacity.
+P6  Readable at 1080p on a laptop video player: minimum 18 px text, key
+    numbers 36 px+, verdicts 48 px+. Contrast ratio >= 4.5:1 for text.
+P7  Colour is never the only cue. Every state also has a pattern and an
+    icon (colour-blind safe, mute-safe).
+P8  Calm baseline, dramatic peaks. Idle motion is slow and subtle so that
+    the key moments (Section 9) stand out.
+P9  Fail visibly. If a service is down or slow, say so on screen
+    ("SAM 3.1 - retrying (2)"). Never freeze silently, never fake success.
+P10 Plain English first, numbers second. "Level 10 would rest on one edge
+    block" before "-12.5 mm".
+
+==============================================================================
+3. INFORMATION THAT MUST NEVER BE LOST
+==============================================================================
+At any moment after a prediction is made, a judge pausing the video must
+be able to read ALL of the following from the screen:
+  1. The question: which block, in plain words ("Remove level 9, front").
+  2. The model assessment: PREDICTS STAND / PREDICTS FALL / INCONCLUSIVE.
+  3. The reason in one sentence, and the margin in mm.
+  4. The basis: how many slots were observed / confirmed / unknown, and
+     whether any unknown still matters; which views were used.
+  5. The lock: time (hh:mm:ss) and fingerprint (#6 hex chars), and the
+     words "locked before action".
+  6. The physical outcome (or "awaiting reality") and its source
+     (operator-confirmed, video retained).
+  7. The comparison: MATCH / MISMATCH / NOT COMPARABLE.
+  8. Session totals: predictions, matches, mismatches, inconclusive, and
+     which trial set (calibration / evaluation).
+  9. The mode: LIVE, or REPLAY / DEV DATA (never ambiguous).
+ 10. Which Meta models were used for this step, and their real latency.
+These live in the verdict strip (6.6) and the Mind pane (6.4); they are
+never hidden by animations for more than 1.5 seconds.
+
+==============================================================================
+4. SCREEN LAYOUT (1920 x 1080, designed for recording)
+==============================================================================
+Fixed layout at 1920x1080 (scale proportionally for other sizes; keep
+16:9). Background #07090D. 12 px outer margin, 12 px gutters.
+
+  y=0    +--------------------------------------------------------------+
+         | TOP BAR (h 56)                                               |
+  y=68   +----------------+----------------------------+----------------+
+         | REALITY PANE   | TWIN PANE                  | MIND PANE      |
+         | x 12..532      | x 544..1376                | x 1388..1908   |
+         | w 520          | w 832                      | w 520          |
+         |                |                            |                |
+         |                |                            |                |
+         |                +----------------------------+                |
+         |                | CAPTION BAND (h 96)        |                |
+  y=878  +----------------+----------------------------+----------------+
+         | VERDICT STRIP (h 190)                                        |
+  y=1068 +--------------------------------------------------------------+
+
+Pane chrome: background #0E1218, 1 px border #1E2632, radius 14 px,
+header row h 40: pane title (Space Grotesk 600, 15 px, letter-spacing
+0.14em, uppercase, #8A97A8) + source tag chip on the right + a one-line
+plain-English subtitle under the title (Inter 15 px, #6F7C8D):
+  REALITY  - "What the cameras see right now"
+  TWIN     - "The AI's model of the structure"
+  MIND     - "What the AI is doing and why"
+
+==============================================================================
+5. VISUAL LANGUAGE
+==============================================================================
+5.1 COLOUR TOKENS (dark theme only)
+  --bg            #07090D   page
+  --panel         #0E1218   panes
+  --panel-2       #131924   cards inside panes
+  --line          #1E2632   borders, grid
+  --text          #E8EEF6   primary text
+  --text-2        #A9B4C2   secondary text
+  --text-3        #6F7C8D   tertiary / subtitles
+  --ai            #3DE0FF   LAPLACE / system activity (cyan)
+  --stand         #3DDC97   predicts stand / observed stand (green)
+  --fall          #FF4D5E   predicts fall / observed fall (red)
+  --info          #FFB547   need more information / inconclusive (amber)
+  --sim           #A88BFF   simulation / possible futures (violet)
+  --operator      #F2F2F2   operator-confirmed (white)
+  --wood          #C9A27A   block base colour (vary +/-6% lightness/block)
+  --match         #3DDC97   MATCH stamp
+  --mismatch      #FF4D5E   MISMATCH stamp
+Glows: same hue at 35% alpha, blur 18-28 px. Never glow body text.
+
+5.2 STATE ENCODING (colour + pattern + icon - always all three)
+  State                     Colour   Pattern on block/card     Icon
+  ------------------------- -------- ------------------------- -----------
+  Predicts stand            --stand  solid fill tint           check (v)
+  Predicts fall             --fall   diagonal hatching 45 deg  down-arrow
+  Need more information     --info   dotted outline + pulse    eye + "?"
+  Inconclusive              --info   horizontal dashes         "~"
+  Unknown slot (twin)       none     translucent ghost wire    none
+  Observed slot             --wood   solid                     none
+  Operator-confirmed slot   --wood   solid + white corner tick tick
+  Simulation                --sim    translucent + trail       play icon
+
+5.3 TYPOGRAPHY (Google Fonts)
+  Space Grotesk 500/600/700 - titles, labels, verdict words
+  Inter 400/500/600         - body, captions, explanations
+  JetBrains Mono 400/600    - numbers, timestamps, hashes, latencies
+  Sizes (px): pane title 15 caps; body 18; trace entry 18; small/meta 15;
+  caption 34; card value 36-40; verdict word 52; stamp 72.
+
+5.4 SOURCE TAG CHIPS
+  Pill, h 26, radius 13, 13 px Space Grotesk 600 caps, 1 px border in the
+  tag colour, text in the tag colour, transparent fill:
+    CAMERA (--text-2)   MODEL ASSESSMENT (--ai)   SIMULATION (--sim)
+    ESTIMATED (--sim, dashed border)   OPERATOR (--operator)
+    DEV DATA (--info, filled, black text) - only in replay/mock mode
+
+5.5 MOTION
+  Easing: cubic-bezier(0.2, 0.8, 0.2, 1) for UI; ease-in for falls.
+  Durations: micro 150 ms; standard 300 ms; emphasis 600 ms; key moment
+  1.2-2.0 s. Never block information for > 1.5 s.
+  Idle: twin auto-rotates 6 deg/s; status lights breathe at 0.5 Hz.
+  Respect "prefers-reduced-motion": no rotation, no particles, fades only.
+
+5.6 SOUND
+  The UI plays no sound effects (the AI voice is the only audio, delivered
+  by the backend). Optional, off by default: a soft "seal" tick on lock.
+
+==============================================================================
+6. COMPONENT SPECS
+==============================================================================
+
+6.1 TOP BAR (h 56, full width)
+  Left : "LAPLACE" wordmark (Space Grotesk 700, 22 px, --text, letter-
+         spacing 0.2em) + "// STRUCTURE 01" (--text-3) + mode badge:
+         LIVE (green dot) | REPLAY (amber) | DEV DATA (amber filled).
+  Centre: service status lights, each = dot + name + last latency:
+         GLASSES  SAM 3.1  MUSE  VOICE  (dot colours: green ok, amber slow
+         > 5 s or retrying, red down, grey not used). Latency in JetBrains
+         Mono 14 px, e.g. "SAM 3.1 4.1s".
+  Right: "UNEDITED RECORDING" badge (red dot + text) - shown only when the
+         operator toggles it (R); wall clock hh:mm:ss in JetBrains Mono
+         22 px (helps prove ordering of lock vs action on video); trial
+         label "TRIAL 07 · EVALUATION SET".
+
+6.2 REALITY PANE (left)
+  Header: REALITY · "What the cameras see right now" · tag CAMERA
+  Main view (520 x ~560): tripod camera image, object-fit contain, dark
+  letterbox. Label in the corner: "TRIPOD · FRONT VIEW" (or the face
+  name from the event).
+  SAM overlay (toggle O, on by default during scans): thin 2 px outlines
+  of each detected block in --ai at 70% alpha; on a scan, outlines appear
+  in sequence (staggered 25 ms, top to bottom). Optional tiny slot ids
+  (e.g. "L9·F") on hover only.
+  Selected block: the corresponding real-image region gets a bright --ai
+  rectangle with corner brackets and the label "L9 · FRONT".
+  Glasses POV picture-in-picture: 220 x 392 (9:16), bottom-right of the
+  pane, rounded 12 px, label "GLASSES · OPERATOR POV". When the AI
+  requests a view, the PiP expands to 300 x 533 and shows a large arrow
+  with the requested side ("LEFT SIDE") until the view is captured.
+  Capture flash: 120 ms white flash + "PHOTO CAPTURED · 1080x1440".
+  Below the main view (if space): a strip of the views captured this
+  session as thumbnails (front / left / back / right), each with a check
+  if it has been used to update the twin.
+  Error states: "Camera disconnected - waiting" with a grey frame; never
+  show a stale frame without an "age" label (e.g. "frame 12 s old").
+
+6.3 TWIN PANE (centre) - see Section 7 for 3D details
+  Header: TWIN · "The AI's model of the structure" · tag MODEL ASSESSMENT
+  Contents:
+   - 3D tower of slot blocks on a subtle circular base with the 4 face
+     names printed on the floor (FRONT / RIGHT / BACK / LEFT).
+   - Evidence map colouring (5.2) when enabled.
+   - Pointer beam to the requested side (9.3).
+   - Two-futures split view (9.2).
+   - Simulation playback (9.4) labelled SIMULATION · ILLUSTRATIVE MOTION.
+   - Top-left legend chips (always visible, small): ghost = unknown,
+     solid = observed, tick = confirmed, and the three evidence-map states.
+   - Top-right counters: "54 slots · 52 observed · 2 confirmed · 0 unknown
+     that matter".
+   - Bottom-right inset (240 x 240, optional): SAM 3D reconstruction,
+     slowly rotating, tag ESTIMATED, caption "SAM 3D visual estimate -
+     not used for prediction".
+
+6.4 MIND PANE (right) - the AI's live reasoning trace
+  Header: MIND · "What the AI is doing and why" · tag (none)
+  A vertical timeline; newest at the bottom; auto-scroll; older entries
+  compress to one line. Each entry:
+    [icon] [KIND LABEL]                       [time hh:mm:ss] [model chip]
+    one or two lines of plain English
+    optional "detail chips" (numbers, slot ids)
+  Entry kinds (icon, label colour):
+    HEARD     ear,     --text      operator speech (final transcript)
+    SAW       camera,  --text-2    new view processed ("Front view: 35
+                                   blocks detected in 4.1 s")
+    MODEL     cube,    --ai        scene updated ("Twin updated: 54/54
+                                   slots resolved")
+    UNKNOWN   eye?,    --info      a hidden slot that matters and why
+    FUTURE    branch,  --sim       a tested possibility with its result
+                                   ("If L9 middle is present -> predicts
+                                   stand, +12.5 mm")
+    ASK       arrow,   --info      the view request
+    ASSESS    gauge,   verdict col the model assessment
+    LOCK      seal,    --ai        lock record
+    SAY       speaker, --ai        what LAPLACE said in the operator's ear
+    OUTCOME   flag,    outcome col physical outcome + source
+    COMPARE   stamp,   match col   MATCH / MISMATCH
+    ERROR     warning, --fall      service errors, retries
+  Model chip: small pill with the Meta model name and real latency, e.g.
+  "SAM 3.1 · 4.1s", "Muse Spark · 1.3s", "Muse Wonder · 8.7s",
+  "Voice Transcribe". Chips come from events; never hard-coded.
+  Streaming text: when the agent's explanation streams (agent.text.delta),
+  render it in the current entry with a blinking cursor; finalize on
+  agent.text.done.
+  Thinking indicator: while a model call is in flight, show a slim
+  progress line with elapsed seconds ("Muse Wonder thinking · 6.2s").
+  Do NOT show raw chain-of-thought. If the backend sends reasoning
+  summaries (agent.summary), show them in a collapsible "Reasoning
+  summary (from model)" block in --text-3.
+
+6.5 CAPTION BAND (under the Twin pane, h 96)
+  Speaker label left (Space Grotesk 600 15 px caps):
+    "LAPLACE · IN OPERATOR'S EAR" (--ai) or "OPERATOR" (--text-2)
+  Caption text: Inter 600, 34 px, max 2 lines, --text; the current
+  phrase highlighted word-by-word if timings are provided, else whole.
+  Voice waveform: 140 px wide animated bars next to the label while
+  say.start ... say.end (amplitude from the event if provided, else a
+  generic animation clearly tied to the speaking interval).
+  Fades out 2.5 s after the last caption.
+
+6.6 VERDICT STRIP (bottom, h 190) - the evidence row
+  Five cards left to right (fixed widths; separators are chevrons that
+  light up in sequence as the story progresses):
+   [1 QUESTION 300] > [2 MODEL ASSESSMENT 520] > [3 LOCK 300] >
+   [4 REALITY 340] > [5 COMPARISON + SESSION 380]
+  Card 1 QUESTION: label "QUESTION"; value "Remove L9 · front block"
+     (36 px); sub "asked by voice 23:41:02".
+  Card 2 MODEL ASSESSMENT: verdict word 52 px with icon and pattern bar
+     (PREDICTS FALL in --fall); reason line 20 px ("Level 10 would rest
+     only on L9's back block"); numbers line in mono ("margin -12.5 mm ·
+     thresholds +4/-1 mm"); basis line ("2 views · 52 observed · 2
+     confirmed · 0 unknown that matter"). Tag MODEL ASSESSMENT.
+  Card 3 LOCK: big "LOCKED" with seal icon, time "23:41:07" (40 px mono),
+     fingerprint "#a3f9c2" (mono), sub "locked before action". Before
+     locking: "not locked yet" in --text-3.
+  Card 4 REALITY: before the outcome: "AWAITING REALITY" with a pulsing
+     dot and elapsed timer since lock; after: "OBSERVED FALL" (48 px, red,
+     hatched) + sub "operator-confirmed · video retained". Tag OPERATOR.
+  Card 5 COMPARISON + SESSION: stamp MATCH / MISMATCH / NOT COMPARABLE
+     (72 px, rotated -6 deg, appears with stamp animation) and below it
+     the session scoreboard in mono:
+       "EVALUATION SET  predictions 7 · match 6 · mismatch 0 ·
+        inconclusive 1"
+     Mismatch count is always shown, even when 0.
+  Cards for a new question reset with a 300 ms slide; the previous
+  question's summary moves into a one-line "history" ticker above the
+  strip (last 3 trials: "L12·M PREDICTS STAND -> STAND · MATCH").
+
+6.7 OVERLAYS
+  Legend overlay (L): 5-second "How to read this screen" with arrows to
+  each pane and the five tag chips. Shown automatically on first load.
+  Title card (T): full-screen "LAPLACE · physical foresight" for recording
+  openers, with the pitch line.
+  Error toast: top-right under the bar, persists until resolved.
+
+==============================================================================
+7. THE 3D TWIN IN DETAIL
+==============================================================================
+7.1 GEOMETRY
+  Use dimensions from the config.tower event (defaults: block 75 x 25 x
+  15 mm; 18 levels; 3 slots). World units = mm. Map our axes to three.js:
+     ours x (left-right in FRONT view)  -> three x
+     ours y (front-back, front = 0)      -> three -z (front faces camera)
+     ours z (up)                         -> three y
+  Level L (1 = bottom) sits at height (L-1)*15 .. L*15 mm.
+  Orientation per level (from config/scene events, never assumed):
+     ENDS: long axis along ours-y; slot index 0/1/2 = L/M/R along x.
+     SIDE: long axis along ours-x; slot index 0/1/2 = F/M/B along y.
+  Gap between blocks: 0.6 mm visual gap so edges read clearly.
+  Base: thin dark disc r=110 mm, with FRONT/RIGHT/BACK/LEFT text on the
+  floor and a faint grid. A soft contact shadow under the tower.
+
+7.2 SLOT STATE VISUALS
+  UNKNOWN   : wireframe edges --text-3 at 35% + 8% fill; no shadow.
+  OBSERVED  : MeshStandardMaterial wood, roughness 0.7, subtle per-block
+              lightness variation; thin dark edges.
+  CONFIRMED : as OBSERVED + white tick decal on the visible end.
+  INFERRED  : as OBSERVED with 45-deg fine hatching overlay at 30%.
+  EMPTY     : not rendered; on hover show a dotted outline of the void.
+  Transition UNKNOWN -> OBSERVED: block "materialises" over 450 ms
+  (wire fades, fill rises from 0 to 1, small scale pop 0.96 -> 1.0) with
+  a thin --ai scan line passing through it.
+
+7.3 EVIDENCE MAP (overlay on present blocks)
+  Tint each present block by its state (5.2) with the pattern drawn on
+  its faces (CanvasTexture or shader). Need-more-information blocks also
+  pulse (opacity 0.6 <-> 1.0 at 1 Hz). Toggle M. Off by default; turned
+  on by the evidence_map.update event.
+
+7.4 SELECTION
+  Selected block: --ai outline (EdgesGeometry, 2 px), lifted 2 mm, label
+  sprite "L9 · FRONT". Same block is bracketed in the Reality pane.
+  Hover (mouse) shows id + state + source tooltip.
+
+7.5 CAMERA
+  Default: perspective, 35 deg FOV, orbit around the tower axis at
+  elevation 18 deg, auto-rotate 6 deg/s. During key moments the camera
+  eases (800 ms) to a scripted framing: e.g., facing the requested side
+  for 9.3, facing the critical level for 9.4. OrbitControls for manual
+  use; any manual input pauses auto-rotate for 10 s.
+
+7.6 SIMULATION PLAYBACK (illustrative)
+  Inputs from the assessment event: critical_interface level, pivot edge
+  (side of the hull the load tips over), and verdict. For PREDICTS FALL:
+  the rigid group of blocks above the critical interface rotates about
+  the pivot edge with ease-in (approx. gravity) for 1.4 s, then the group
+  breaks into blocks that scatter and settle (simple scripted motion is
+  fine - this is ILLUSTRATIVE). For PREDICTS STAND: the removed block
+  slides out along its long axis over 900 ms and the tower stays; a
+  "settled" ring pulses once. Label the pane "SIMULATION · ILLUSTRATIVE
+  MOTION" while playing. Always rewind to the static twin afterwards.
+
+7.7 TWO FUTURES SPLIT
+  Split the Twin pane into two sub-viewports (each 408 px wide) sharing
+  one camera orbit. Each shows a translucent (--sim tinted) copy of the
+  twin with the hypothetical slot state applied, and its playback
+  (7.6). Header per side:
+    "FUTURE A · if L9 middle is PRESENT"  -> verdict chip + margin
+    "FUTURE B · if L9 middle is EMPTY"    -> verdict chip + margin
+  A thin vertical divider glows --sim. See 9.2 for the sequence.
+
+7.8 POINTER BEAM
+  From the requested face of the tower, a beam (cylinder + additive
+  particles flowing outward, --info) extends 160 mm to a floating label
+  "SHOW ME: LEFT SIDE" with an eye icon, plus an arc arrow on the floor
+  around the base towards that side. Ends with a quick collapse when
+  view.captured arrives.
+
+==============================================================================
+8. OPERATOR CONTROLS
+==============================================================================
+  Mouse click on a block   select block (sends ui.select_block)
+  Enter                    request assessment for the selected block
+  1 / 2 / 3                operator outcome: 1 = OBSERVED STAND,
+                           2 = OBSERVED FALL, 3 = UNCLEAR
+                           (asks "Confirm OBSERVED FALL? Y/N" first)
+  C                        confirm hovered slot present (ui.confirm_slot)
+  X                        confirm hovered slot empty
+  M                        toggle evidence map
+  O                        toggle SAM outlines in Reality pane
+  R                        toggle "UNEDITED RECORDING" badge
+  L                        legend overlay;  T title card
+  Space                    pause/resume replay (replay mode only)
+  [ / ]                    replay speed 0.5x / 2x (replay mode only)
+All operator actions are echoed in the Mind pane as OPERATOR entries.
+Keyboard is for setup and fallback; the demo should be voice-driven.
+
+==============================================================================
+9. CHOREOGRAPHY OF THE SIGNATURE MOMENTS
+==============================================================================
+Times are relative to the triggering event. Everything else dims to 40%.
+
+9.1 SCAN -> TWIN BUILDS ITSELF  (trigger: scan.started, sam.result,
+    slot.update)
+  0.0 s  Reality pane: a horizontal --ai scan line sweeps top to bottom
+         over 1.2 s; status light SAM 3.1 turns "busy".
+  on sam.result: outlines pop in, staggered top->bottom; Mind entry SAW
+         "Front view: 35 blocks detected · SAM 3.1 · 4.1 s".
+  on slot.update: matching twin blocks materialise (7.2) in the same
+         top->bottom order, 25 ms stagger. Counters tick up.
+  end    Mind entry MODEL "Twin updated: 36 slots resolved from front
+         view, 18 still unknown (hidden behind front blocks)".
+  Second view (side or a requested face): same; the ghosts it resolves
+  turn solid. NOTE: in the core demo the tripod scans only the FRONT, so
+  hidden slots remain for the AI to ask about (see design doc 4.1).
+
+9.2 TWO POSSIBLE FUTURES  (trigger: futures.show)
+  0.0 s  Mind entry UNKNOWN "L9 middle is hidden - and it decides the
+         outcome".
+  0.2 s  Twin camera eases to the critical level; twin splits (7.7).
+  0.8 s  Both futures play simultaneously; verdict chips appear.
+  2.6 s  Mind entries FUTURE A / FUTURE B with margins.
+  hold   Split stays until futures.resolve.
+  on futures.resolve(kept="B"): FUTURE B grows to full width over 700 ms;
+         FUTURE A dissolves into --sim particles (600 ms); Mind entry
+         MODEL "Left view shows L9 middle is EMPTY -> Future B".
+
+9.3 THE AI DIRECTS THE HUMAN  (trigger: view.request)
+  0.0 s  Pointer beam grows from the left face (7.8); floor arc arrow.
+  0.0 s  Reality PiP expands with "SHOW ME: LEFT SIDE".
+  0.1 s  Mind entry ASK + SAY; caption band shows the spoken request with
+         waveform.
+  on view.captured: capture flash in PiP; beam collapses; twin blocks
+         affected by the new view materialise; affected evidence-map
+         blocks change state with a 300 ms colour cross-fade.
+
+9.4 THE PREDICTION AND THE LOCK  (trigger: assessment, then lock.created)
+  on assessment: Card 2 fills (verdict word types in, 300 ms); twin plays
+         SIMULATION (7.6) once; Mind entry ASSESS.
+  on lock.created: 0.0 s whole UI freezes motion for 400 ms; a seal
+         stamps into Card 3 (scale 1.4 -> 1.0, 350 ms) with time and
+         fingerprint; Card 4 switches to "AWAITING REALITY" with the
+         elapsed timer; chevrons 1->3 light; Mind entry LOCK.
+  The clock in the top bar stays visible throughout (proof of order).
+
+9.5 REALITY ANSWERS  (trigger: action.started, outcome.recorded,
+    comparison)
+  on action.started: Card 4 shows "ACTION IN PROGRESS"; Reality pane
+         border pulses --ai.
+  on outcome.recorded: Card 4 shows the observed outcome; Reality pane
+         freezes its last frame for 2 s with tag CAMERA · OBSERVED
+         FALL; next to it, the twin shows the final frame of the
+         SIMULATION - a side-by-side "predicted vs observed" moment.
+  on comparison: MATCH stamp lands on Card 5 (rotation -6 deg, scale
+         1.6 -> 1.0, 300 ms, slight screen shake 4 px for 200 ms - off
+         under reduced motion); scoreboard increments with a counter
+         roll; Mind entry COMPARE; history ticker updates.
+  MISMATCH uses the same choreography in --mismatch. NOT COMPARABLE
+         (inconclusive or unclear) uses a neutral grey stamp.
+
+9.6 VOICE IN THE EAR  (trigger: say.start / say.end)
+  Caption band shows the text with "LAPLACE · IN OPERATOR'S EAR" and the
+  waveform; Mind entry SAY. Duration from the event.
+
+==============================================================================
+10. EVENT CONTRACT
+==============================================================================
+Transport: WebSocket ws://<host>:8000/ws/ui (JSON text frames).
+Envelope (every message):
+  {"type": "<event>", "seq": <int>, "ts": "<ISO-8601 UTC>",
+   "run_id": "<string>", "dev_data": <bool>, "payload": {...}}
+The UI must ignore unknown types (log them to console) and render events
+in seq order. Times shown on screen use ts converted to local time.
+
+10.1 BACKEND -> UI
+  session.start      {mode:"LIVE"|"REPLAY", structure_id, trial_set:
+                      "calibration"|"evaluation", trial_no, app_version}
+  config.tower       {levels, slots_per_level:3, block_mm:{length,width,
+                      height}, level_orientation:["SIDE","ENDS",...]
+                      (index 0 = level 1)}
+  status.service     {service:"glasses"|"sam"|"muse"|"voice",
+                      state:"ok"|"busy"|"slow"|"retrying"|"down"|"off",
+                      latency_s?, detail?}
+  camera.frame       {source:"tripod"|"glasses", face:"front"|"left"|
+                      "back"|"right", url, width, height, age_s?}
+  scan.started       {view_id, source, face}
+  sam.result         {view_id, face, model:"sam-3.1", prompt, latency_s,
+                      image:{url,width,height},
+                      boxes:[{x1,y1,x2,y2}], count}
+  slot.update        {scene_version, changes:[{level, index, state:
+                      "UNKNOWN"|"PRESENT_OBSERVED"|"EMPTY_OBSERVED"|
+                      "PRESENT_CONFIRMED"|"EMPTY_CONFIRMED"|"INFERRED",
+                      source:{kind:"view"|"operator"|"rule", view_id?},
+                      image_box?:{x1,y1,x2,y2}}]}
+  scene.summary      {scene_version, slots_total, observed, confirmed,
+                      inferred, unknown, unknown_that_matter, views:[ids]}
+  evidence_map.update {scene_version, blocks:[{level,index,state:
+                      "PREDICTS_STAND"|"PREDICTS_FALL"|"NEEDS_VIEW"|
+                      "INCONCLUSIVE", margin_mm?, needs_face?}]}
+  voice.heard        {text, final:bool, latency_s?}
+  agent.step         {kind:"SAW"|"MODEL"|"UNKNOWN"|"FUTURE"|"ASK"|
+                      "ASSESS"|"LOCK"|"OUTCOME"|"COMPARE"|"ERROR"|
+                      "OPERATOR", text, model?, latency_s?, chips?:[str]}
+  agent.thinking     {model, started:bool}   (progress indicator)
+  agent.text.delta   {entry_id, delta}
+  agent.text.done    {entry_id, text, model, latency_s}
+  agent.summary      {text, model}           (optional)
+  select.block       {level, index, label:"L9 · FRONT"}
+  futures.show       {question:{level,index}, unknown_slot:{level,index,
+                      label}, futures:[{id:"A", assume:"PRESENT",
+                      verdict, margin_mm, critical_level?, pivot?},
+                      {id:"B", assume:"EMPTY", ...}]}
+  futures.resolve    {kept:"A"|"B", reason}
+  view.request       {face:"left"|"right"|"back"|"front", reason,
+                      slots:[{level,index}]}
+  view.captured      {view_id, face, source:"glasses"|"tripod",
+                      width, height}
+  assessment         {question:{level,index,label}, verdict:
+                      "PREDICTS_STAND"|"PREDICTS_FALL"|"INCONCLUSIVE",
+                      margin_mm, thresholds_mm:{safe,fall}, reason,
+                      critical_level?, pivot?:"front"|"back"|"left"|
+                      "right", basis:{views, observed, confirmed,
+                      unknown_that_matter}}
+  lock.created       {fingerprint_short, fingerprint_full, locked_at,
+                      question, verdict, margin_mm}
+  say.start          {text, duration_s, words?:[{w,t}]}
+  say.end            {}
+  action.started     {question}
+  outcome.recorded   {fingerprint_short, observed:"OBSERVED_STAND"|
+                      "OBSERVED_FALL"|"UNCLEAR", source:"OPERATOR"|"AUTO",
+                      evidence:{video?, frame_url?}}
+  comparison         {fingerprint_short, result:"MATCH"|"MISMATCH"|
+                      "NOT_COMPARABLE"}
+  session.stats      {trial_set, predictions, match, mismatch,
+                      inconclusive, unclear}
+  sam3d.asset        {url (GLB), label:"ESTIMATED"}   (optional)
+  error              {service, message, retrying:bool}
+
+10.2 UI -> BACKEND
+  ui.select_block    {level, index}
+  ui.request_assessment {level, index}
+  ui.operator_outcome {observed:"OBSERVED_STAND"|"OBSERVED_FALL"|"UNCLEAR"}
+  ui.confirm_slot    {level, index, state:"PRESENT_CONFIRMED"|
+                      "EMPTY_CONFIRMED"}
+  ui.toggle          {name:"recording_badge"|"evidence_map"|"outlines",
+                      value:bool}
+In replay mode the UI does not send; it logs what it would have sent.
+
+==============================================================================
+11. MOCK REPLAY MODE AND DEV WORKFLOW
+==============================================================================
+  Start a static server at the repo root:
+      cd C:\Users\ajayg\evidence-os
+      python -m http.server 8080
+  Open: http://localhost:8080/laplace/ui/?replay=mock/mock_scenario.jsonl
+  Replay rules:
+   - Load the JSONL, emit events in seq order using the ts differences as
+     delays (speed via [ and ]; Space pauses).
+   - Show the DEV DATA badge and tag whenever dev_data is true. This must
+     be impossible to miss: never record the demo video in this mode.
+  The mock scenario (companion file) contains two trials:
+   Trial 07: tripod scans the FRONT only (36 slots resolved, 18 hidden),
+     evidence map shows "need more information" on the long-side levels,
+     question "remove L9 front" by voice, hidden L9 middle decides the
+     outcome -> two futures -> AI asks for the LEFT side -> operator looks
+     with the glasses -> view shows L9 middle EMPTY -> Future B kept ->
+     PREDICTS FALL (-12.5 mm) -> lock -> OBSERVED FALL -> MATCH.
+   Trial 08: rebuilt tower, tripod scans front + right (all 54 slots), no
+     view needed, question "remove L12 middle" -> PREDICTS STAND
+     (+37.5 mm) -> lock -> OBSERVED STAND -> MATCH.
+   Total replay length ~76 s at 1x.
+   Regenerate with: python scripts/make_mock_scenario.py
+  The SAM boxes in the mock are REAL outputs of SAM 3.1 on our reference
+  photos (35 boxes each). The scenario, timings and outcomes are DEV DATA.
+
+==============================================================================
+12. TECHNICAL REQUIREMENTS
+==============================================================================
+12.1 STACK
+  - Plain HTML + CSS + ES modules. No build step, no framework required.
+  - three.js r160 via import map, pinned:
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    For the live finals, vendor a local copy under laplace/ui/vendor/ and
+    switch the import map (no internet dependency for rendering).
+  - Fonts: Google Fonts (Space Grotesk, Inter, JetBrains Mono) with
+    system-font fallbacks.
+12.2 FILES (laplace/ui/)
+  index.html        layout skeleton, import map, font links
+  styles.css        tokens (Section 5), layout, components
+  app.js            boot, mode detection (live vs replay), event bus
+  events.js         WebSocket client + replay player, seq ordering
+  state.js          single source of UI state (reducer over events)
+  topbar.js  reality.js  twin.js  mind.js  captions.js  verdict.js
+  overlays.js       legend, title card, toasts
+  mock/mock_scenario.jsonl
+  vendor/           (later) three.js local copy
+  Architecture rule: events -> state.js (pure reducer) -> components
+  render from state. Components never talk to each other directly. This
+  makes every screen state reproducible from an event log (debuggable,
+  testable).
+12.3 PERFORMANCE
+  60 fps on a mid-range laptop at 1920x1080 with 54 blocks, particles and
+  two viewports. Cap device pixel ratio at 2. GLB inset <= 1 MB (the
+  backend decimates SAM 3D output).
+12.4 ROBUSTNESS
+  - WebSocket auto-reconnect (1 s, 2 s, 4 s ... max 10 s) with a visible
+    "reconnecting" state; on reconnect request a state snapshot
+    (ui.hello -> backend replies with the latest events).
+  - Unknown event types ignored and logged.
+  - No exception may blank the screen: wrap each component render in
+    try/catch, log, and show a small "render error" chip.
+12.5 DEBUGGING
+  - ?debug=1 shows an event inspector drawer (last 50 events, raw JSON)
+    and FPS counter.
+  - console.debug for every event applied, tagged [LAPLACE-UI].
+12.6 TESTS
+  - Reducer unit tests (state.js) runnable in Node: feed mock events,
+    assert the final state (counts, verdict, lock, comparison).
+  - Visual check: replay at 4x, screenshot at the 6 key moments, compare
+    by eye against Section 9 before each commit to main.
+
+==============================================================================
+13. ACCEPTANCE CRITERIA
+==============================================================================
+13.1 THE 10-SECOND JUDGE TEST
+  Pause the replay at any time after the lock. Show the screenshot to
+  someone who has not seen the project for 10 seconds. They must be able
+  to say: (1) which block was in question, (2) what the AI predicted,
+  (3) that it was locked before the action and when, (4) what actually
+  happened, (5) whether the AI was right. If not, simplify.
+13.2 FUNCTIONAL
+  [ ] Full mock replay runs end to end without errors at 1x and 4x.
+  [ ] All Section 3 information visible after the lock in both trials.
+  [ ] Every visual carries the correct source tag (P2).
+  [ ] DEV DATA badge visible throughout replay.
+  [ ] Evidence-map states use colour + pattern + icon.
+  [ ] Mismatch count visible even when 0.
+  [ ] Reduced-motion mode works.
+  [ ] Reconnect state appears when the WebSocket drops (live mode).
+13.3 VISUAL
+  [ ] Text sizes per 5.3 at 1080p; nothing below 15 px.
+  [ ] Key moments (9.1-9.6) match the choreography and never hide the
+      verdict strip for more than 1.5 s.
+  [ ] 60 fps during the two-futures split.
+
+==============================================================================
+14. OUT OF SCOPE / DO NOT BUILD
+==============================================================================
+  - Any UI-side physics or prediction logic (the backend decides).
+  - Fake "AI thinking" text or random numbers for effect.
+  - Light theme, mobile layout, login, settings pages.
+  - Rendering the raw SAM masks as filled shapes (outlines only).
+  - Using the SAM 3D mesh as the twin (it is an inset, labelled ESTIMATED).
+
+==============================================================================
+15. GLOSSARY OF ON-SCREEN TERMS (use these exact words)
+==============================================================================
+  PREDICTS STAND / PREDICTS FALL / INCONCLUSIVE   model assessment
+  OBSERVED STAND / OBSERVED FALL / UNCLEAR        physical outcome
+  MATCH / MISMATCH / NOT COMPARABLE               comparison
+  NEED MORE INFORMATION                           evidence-map state
+  LOCKED · locked before action                   prediction lock
+  AWAITING REALITY                                between lock and outcome
+  SIMULATION · ILLUSTRATIVE MOTION                predicted-outcome motion
+  ESTIMATED                                       SAM 3D visuals
+  OPERATOR-CONFIRMED · video retained             outcome source
+  L9 · FRONT / MIDDLE / BACK / LEFT / RIGHT       block labels (level +
+                                                  slot; F/M/B on SIDE
+                                                  levels, L/M/R on ENDS)
+  Never on screen: "Jenga", "certain", "guaranteed", "100%", "safe".
+
+==============================================================================
+END OF UI SPEC
+==============================================================================
