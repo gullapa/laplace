@@ -1,0 +1,21 @@
+# Secrets and environment
+.env
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Large or generated data (kept locally, not in git)
+videos/
+runs/
+logs/
+sam_tests/
+sam_events*.jsonl
+*.glb
+*.ply
+
+# Editors
+.idea/
+.vscode/

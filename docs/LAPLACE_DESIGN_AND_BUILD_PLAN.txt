@@ -1,0 +1,993 @@
+==============================================================================
+LAPLACE - PHYSICAL FORESIGHT
+Design, Strategy and Build Plan
+==============================================================================
+Event      : Meta Global AI Developer Hackathon (Cerebral Valley)
+Track      : Indie / solo developer
+Theme      : Push the Frontier
+Owner      : Aj (solo builder)
+Repo folder: C:\Users\ajayg\evidence-os
+Version    : 1.1 - Wed Oct 28, 2026, end of Day 3 (all feasibility tests
+             complete, build starts Thu Oct 29). v1.1 applies the external
+             design review; see "Revision history" at the end.
+Deadline   : Submission Wed Nov 4, 2026, 9:00 PM ET (target: noon ET)
+             Judging Nov 4-8. Live finals and winners Nov 9.
+
+This document is the single source of truth. Any person or coding agent
+(Claude, Codex, Muse Code) picking up this project reads this first.
+When a decision changes, update Section 3 (Decision Log) and the affected
+section in the same commit.
+
+------------------------------------------------------------------------------
+CONTENTS
+------------------------------------------------------------------------------
+ 1. Vision and one-line pitch
+ 2. How we win (judging criteria, strategy, what judges must see)
+ 3. Decision log (locked decisions and what we cut)
+ 4. The demo story (3-minute video storyboard, recording plan)
+ 5. System architecture
+ 6. Core methods (tower model, slot check, stability, ask-for-view,
+    prediction lock, outcome detection, planning)
+ 7. Data model and module contracts
+ 8. Meta technology map (which model does what, cost, latency)
+ 9. What is done so far (test evidence with numbers)
+10. Build plan (stages, day-by-day, done-when checks, scope tiers)
+11. Engineering principles (how we write code on this project)
+12. Testing strategy
+13. Risk register and fallbacks
+14. Open decisions
+15. Appendix: API notes, environment setup, physical rig protocol
+
+==============================================================================
+1. VISION AND ONE-LINE PITCH
+==============================================================================
+
+THE PROBLEM
+People and machines constantly have to remove one piece from a pile without
+bringing the rest down: rescuers moving debris off a trapped person, warehouse
+robots pulling boxes from a stack, demolition and repair crews taking out a
+part. Today that decision is human gut feel under pressure. When it is wrong,
+structures collapse.
+
+THE INSIGHT
+AI can now SEE objects. It cannot yet FORESEE consequences. Before a person
+or a robot acts on a physical structure, it should be able to rehearse the
+action in a digital copy, know what it cannot see, ask for exactly the missing
+view, and commit to a prediction before anyone touches anything.
+
+WHAT LAPLACE IS (prototype)
+A wearable + AI system that:
+  1. Builds a live 3D twin of a physical structure from camera views
+     (phone on tripod and Meta AI glasses).
+  2. Tracks what it has seen, what it has confirmed, and what is hidden.
+  3. Takes a spoken question: "What happens if I pull this block?"
+  4. Asks for the one view it needs when a hidden part would change the
+     answer ("I can't see behind level 9. Show me the left side.").
+  5. Gives a model assessment - PREDICTS STAND / PREDICTS FALL /
+     INCONCLUSIVE - locks the prediction with a
+     timestamp and fingerprint, and speaks it into the operator's ear.
+  6. Compares the prediction with what reality does, on camera, unedited.
+  7. Plans a safe multi-step extraction ("reach the survivor in 3 moves").
+
+The test structure is a block tower: small, safe, and - critically -
+FALSIFIABLE. It is our crash-test dummy for "a stack you must take apart".
+
+ONE-LINE PITCH (use verbatim)
+  "Robots and AI can see objects. They can't yet foresee consequences.
+   LAPLACE predicts what happens before anyone touches anything, asks when
+   it's unsure, and proves itself against reality."
+
+CLOSING LINE
+  "Today, a test tower. Tomorrow, rescue teams, warehouse robots, demolition
+   crews. Rehearse the move before you make it."
+
+NAME
+"LAPLACE" refers to Laplace's demon: an intellect that, knowing the present
+state and the laws, computes the future. Working name; see Section 14.
+
+==============================================================================
+2. HOW WE WIN
+==============================================================================
+
+2.1 WHAT IS JUDGED (indie track, per Meta's event page)
+  - Creativity
+  - Technical ambition
+  - Whether it works
+Theme language we answer directly: "give a machine a new capability",
+"understand and control a physical system", "when these models meet the
+real world". Robotics is named in the theme.
+
+Finalist count: we were told 5 indie + 5 startup finalists; confirm in the
+Official Rules (O5) - strategy does not depend on the exact number.
+Most glasses entries will be
+"AI tells you what you are looking at". We win by doing what they cannot:
+a physical prediction, made first, proven on camera.
+
+2.2 HOW EACH CRITERION IS WON
+Creativity
+  - A new interaction: rehearse a physical action in a twin, in your ear,
+    before you act.
+  - The AI asks for the missing view instead of guessing (rare, memorable).
+  - Evidence map: every block shows "model predicts stands", "model
+    predicts fall" or "need more information" - and for the third, a
+    glowing pointer shows which side of the tower the AI needs to see.
+    The AI does not just display uncertainty; it directs the human to
+    gather the evidence that resolves it. (Signature interaction.)
+Technical ambition
+  - Five Meta models plus Meta glasses hardware in one live loop:
+    SAM 3.1, Muse Wonder, Muse Spark, Muse Voice Transcribe, SAM 3D,
+    Meta glasses via the Wearables Device Access Toolkit.
+  - Real engineering underneath: grid scene model with provenance, static
+    stability analysis with uncertainty bands, value-of-information logic
+    for when to ask, multi-step extraction planning, prediction locking.
+Whether it works
+  - Unedited, continuous takes in which the locked prediction is visible
+    on screen BEFORE the physical action. Reality decides. The record's
+    SHA-256 fingerprint is an integrity aid (shows the record was not
+    edited later); the continuous video is what proves the timing.
+  - Both outcomes shown: a predicted "stands" that stands and a predicted
+    "falls" that falls.
+  - A trial table in the README: calibration trials and SEPARATE
+    evaluation trials, agreement rate, inconclusives reported separately,
+    every miss kept.
+
+2.3 WHAT JUDGES MUST SEE IN THE FIRST 15 SECONDS
+  Real stakes (collapse image) -> the question -> a prediction locked ->
+  reality matches. The hook must land before any explanation.
+
+2.4 CREDIBILITY RULES (non-negotiable; they are also a competitive edge)
+  - Never script an outcome. Every prediction is computed from the current
+    scene. Fixture data is only for tests and is labelled.
+  - Never call a recorded video "live". Say "unedited test".
+  - Never say "Jenga" in the video. Say "test structure" / "block tower".
+    Turn logo faces inward; blur any that remain.
+  - Show misses honestly in the README trial table.
+  - SAM 3D output is labelled as a visual reconstruction, never as the
+    physical model.
+  - The capability claim is "first working step", not "ready for rubble".
+
+2.5 SUBMISSION PACKAGE (checklist)
+  [ ] 3-minute video (Section 4)
+  [ ] Public or judge-accessible GitHub repo, clean README
+  [ ] Architecture diagram (one image)
+  [ ] Trial results table (predictions vs outcomes)
+  [ ] Setup instructions that a judge could follow
+  [ ] Honest limitations section
+  [ ] Live-finals readiness: the demo must run repeatably on Nov 9
+
+==============================================================================
+3. DECISION LOG
+==============================================================================
+
+LOCKED
+D1  Concept: block tower physical-foresight demo. Rejected: pendulum/ball
+    "LAPLACE physics discovery", box stacks (felt weaker), pivoting again.
+D2  Framing: "physical foresight for people and machines"; rescue scene opens
+    the video for emotion; warehouses/robots named as nearest real use.
+D3  Tower is modelled as a discrete GRID: ~18 levels x 3 slots, per-level
+    orientation DETECTED (not assumed to alternate).
+D4  The scene model is built by SAM 3.1 + our code, NOT by the reasoning model
+    reading raw photos (Muse Wonder took 217 s on a raw photo; Section 9).
+D5  Predictions come from a MODEL ASSESSMENT (static stability check in
+    code) under stated assumptions. It is not "the truth": the physical
+    trial is the outcome. Three separate things, always labelled:
+      Model assessment : PREDICTS STAND / PREDICTS FALL / INCONCLUSIVE
+      Physical outcome : OBSERVED STAND / OBSERVED FALL / UNCLEAR
+      Comparison       : MATCH / MISMATCH
+    Physics-engine animation, if used, is labelled "illustration".
+D6  The AI asks for a view ONLY when the hidden part would change the
+    prediction (value-of-information rule, computed in code; Muse phrases
+    and explains it).
+D7  Muse Wonder = planning/judgement over structured scene text.
+    Muse Spark 1.3 = fast conversational turns.
+D8  Capture: S25 on tripod is the primary camera; Meta glasses provide the
+    operator's views (requested side views first, walk-around last).
+D9  Glasses audio route: in-stream camera audio, 16 kHz PCM (beta, available
+    in Developer Mode). Fallback: HFP headset mode (8 kHz).
+D10 Voice back: the laptop generates ONE audio clip per reply; it plays to
+    the glasses (via phone) AND on the laptop (OBS / audience). Captions
+    always on screen.
+D11 Display: split / three-panel laptop UI. No projector. No wearable
+    display (Adventurer glasses have none).
+D12 SAM 3D (via fal.ai hosting Meta's open model) is used for visuals only:
+    the opening "photo becomes 3D" moment and the "beyond blocks" finale.
+D13 No Neural Band purchase. Glasses capture button = optional "confirm".
+D14 Head-on views only for slot checks. Angled glasses frames are ignored.
+D15 (v1.1) A slot stays UNKNOWN unless an image or an operator confirmation
+    supports its state. A missed detection is not proof of absence; a dark
+    patch is evidence to investigate, not proof of a gap.
+D16 (v1.1) Physical outcome is OPERATOR-CONFIRMED in v1 (video retained,
+    labelled). Automatic outcome detection is later work and must return
+    UNCLEAR when it cannot decide.
+D17 (v1.1) Calibration trials tune thresholds; thresholds are then FROZEN;
+    a separate set of new evaluation trials is what we report.
+D18 (v1.1) The core video rests on: one computed PREDICTS STAND that stands,
+    one computed PREDICTS FALL that falls, one meaningful missing-view
+    request, and the evidence. The survivor planner appears only if it
+    passes its reliability gate (Section 10).
+D19 (v1.1) The 360-degree glasses walk-around stays in the plan as the
+    final stretch milestone (C1), with the field-operator experiment
+    after it (C5). Only free-form mesh reconstruction is cut.
+
+CUT (and why)
+  - Free-form 3D MESH reconstruction as the physical model: the block grid
+    is more reliable and checkable. (The 360-degree walk-around that fills
+    the grid is NOT cut - it is stretch milestone C1; see D19.)
+  - Quest / mixed reality: new platform, too risky for one person.
+  - Projector overlay: split screen gives the same credibility.
+  - Mass/material from SAM 3D: physically unjustified.
+
+==============================================================================
+4. THE DEMO STORY
+==============================================================================
+
+4.1 3-MINUTE STORYBOARD
+0:00-0:15  HOOK. Still of a collapsed structure (public-domain FEMA image).
+           VO: "In a collapse, rescuers must decide which piece they can
+           move without bringing the rest down. One wrong move can cost a
+           life." Cut to tower + laptop. "What if AI could understand a
+           structure, know what it can't see, and predict what happens
+           before anyone touches it? Here's an unedited test."
+CORE VERSION (built first; must work on its own)
+0:15-0:50  SEE. Tripod scan builds the twin; ghost blocks turn solid as
+           slots are confirmed. Evidence map appears: blocks marked
+           "predicts stand", "predicts fall", "need more information" with
+           a glowing pointer to the side the AI needs.
+0:50-1:40  FORESEE. Operator (glasses on): "What if I pull this one?"
+           AI in ear (also captioned): "I can't see behind level 9. Show me
+           the left side." Operator looks; the slot fills in; the block's
+           marker updates. AI: "Model predicts a fall: level 10 would rest
+           on one edge block." PREDICTION LOCKED on screen. Block pulled.
+           Tower falls. Operator confirms outcome -> MATCH.
+1:40-2:20  SECOND CASE. Rebuilt tower. A different block: "Model predicts
+           it stands." Locked. Pulled. Stands. MATCH. Brief trial table
+           card: "evaluation trials: X of Y matched, Z inconclusive".
+2:20-2:45  WOW SLOT (best available, in this priority order):
+           (a) 360-degree walk-around filling the twin (C1), or
+           (b) survivor extraction plan, only if it passed its gate (S4), or
+           (c) SAM 3D "beyond blocks" with everyday objects (C3).
+2:45-3:00  CLOSE. Pitch line + architecture card listing the Meta stack.
+Rule: anything not reliable by Mon Nov 2 9 PM stays out of the video.
+
+4.2 RECORDING PLAN
+  Cameras : (1) S25 on tripod = system camera; (2) a SECOND camera/phone
+            for the wide shot of operator + tower + laptop; (3) OBS on the
+            laptop recording the UI and the AI audio digitally.
+  Audio   : AI voice captured digitally from the laptop (crisp). Operator
+            voice via phone or clip-on mic. One close-up "proof shot" with a
+            mic near the glasses arm to show the voice really plays in-ear.
+            Label: "AI voice as heard by the operator (direct feed)".
+  Sync    : clap at the start of every take.
+  Takes   : record every act at least 3 times. Keep the raw files.
+  Live finals (Nov 9): screen share with computer sound; captions on.
+
+==============================================================================
+5. SYSTEM ARCHITECTURE
+==============================================================================
+
+5.1 PHYSICAL SETUP
+  - Table, plain wall behind, good light. Tower on a plate (turntable).
+  - Tape marks for tripod feet, plate position and plate "front".
+  - S25 on tripod, 50-70 cm away, lens at tower mid-height.
+  - Stage C only: 4 printed ArUco markers on the plate's sides.
+  - Meta Adventurer glasses paired to the S25.
+  - Laptop (Windows) on the same Wi-Fi as the phone.
+
+5.2 DATA FLOW
+                 +-------------------- S25 phone app ---------------------+
+  Glasses cam -->| DAT camera stream (504x896..720x1280) + photo capture   |
+  Glasses mic -->| DAT in-stream audio, PCM 16 kHz mono                    |
+  Phone cam   -->| CameraX stills (tripod view)                           |
+  Glasses spk <--| plays reply audio (Bluetooth A2DP)                     |
+                 +-----------------------------+--------------------------+
+                                               | WebSocket over LAN
+                                               v
+  +----------------------------- Laptop backend (Python) ------------------+
+  | ingest -> perception (SAM 3.1) -> scene model -> stability/planner     |
+  |   ^            |                      |                |               |
+  |   |            v                      v                v               |
+  | voice: ASR (Muse Voice Transcribe) -> agent (Muse Spark / Wonder) ->   |
+  |        TTS clip -> phone + laptop speakers                             |
+  | evidence: run folder, event log, prediction locks, outcomes            |
+  +----------------------------------+-------------------------------------+
+                                     | WebSocket
+                                     v
+  +------------------------------ Laptop UI (browser) ---------------------+
+  | Left: reality view   | Centre: 3D twin (three.js)  | Right: evidence   |
+  | camera / glasses POV | states, evidence map, lock  | trace + captions  |
+  +------------------------------------------------------------------------+
+
+5.3 COMPONENTS
+  phone_app/   Android (Kotlin), forked from Meta's CameraAccess sample.
+               Responsibilities: DAT session, glasses stream + photo
+               capture, in-stream audio, phone-camera stills, uplink to
+               laptop, downlink audio playback, capture-button events.
+               No API keys on the phone. Ever.
+  laptop/      Python backend (FastAPI + websockets) and static web UI.
+  external     Meta Model API (SAM 3.1, Muse models, ASR); fal.ai (SAM 3D).
+
+5.4 REPOSITORY LAYOUT (target)
+  evidence-os/
+    docs/                 this document, decision notes, diagrams
+    laplace/              Python package
+      config.py           settings from .env (keys, ports, thresholds)
+      log.py              structured logging setup
+      runs.py             run-folder management (inputs, raw, outputs)
+      clients/
+        meta_api.py       upload, responses call, streaming, retries
+        sam.py            SAM 3.1 request + parser (boxes, masks)
+        muse.py           Muse Wonder/Spark calls, tool calling
+        asr.py            Muse Voice Transcribe realtime WebSocket
+        tts.py            reply audio generation
+        sam3d.py          fal.ai SAM 3D call + GLB decimation
+      scene/
+        model.py          Tower, Level, Slot, provenance, versions
+        locate.py         tower bounds + row/level detection from boxes
+        slots.py          slot classification (present/empty/unknown)
+        merge.py          combine views into one scene version
+      physics/
+        geometry.py       block footprints, contact polygons, hulls
+        stability.py      layer + per-block checks, margins, assessment
+        planner.py        evidence map, multi-step extraction search
+        voi.py            ask-only-when-it-matters logic
+      evidence/
+        ledger.py         append-only events, prediction lock, outcomes
+        outcome.py        fell/stood detection from before/after frames
+      agent/
+        tools.py          tools exposed to Muse (get_scene, predict, ...)
+        policy.py         conversation flow, model routing
+      server/
+        app.py            FastAPI app, WebSocket hubs (phone, UI)
+        protocol.py       message envelopes and types
+      ui/                 index.html, app.js, three.js twin, styles
+    tests/
+      unit/               pure logic, no network
+      fixtures/           photos, saved API responses, synthetic towers
+      integration/        real API calls, marked and opt-in
+    phone_app/            Android project
+    scripts/              one-off tools (test_tower_sam.py, test_muse.py)
+    runs/                 per-session evidence folders (git-ignored)
+    test_photos/          reference photos
+    .env                  MODEL_API_KEY, FAL_KEY (never committed)
+
+==============================================================================
+6. CORE METHODS
+==============================================================================
+
+6.1 TOWER GEOMETRY
+  Standard block: 1.5 cm high x 2.5 cm wide x 7.5 cm long (MEASURE ours on
+  Day 1 with a ruler; store in config). A level = 3 blocks side by side,
+  7.5 x 7.5 cm footprint, 1.5 cm high. Full tower = 18 levels, 54 blocks.
+  Axes: x = left-right in the FRONT view, y = front-back, z = up.
+  Level orientation:
+    ENDS  : long axes along y. Front view shows 3 end faces.
+            Slots indexed by x: L, M, R.
+    SIDE  : long axes along x. Front view shows the long face of the front
+            block only. Slots indexed by y: F, M, B.
+  The side view (plate turned 90 degrees) swaps the two: SIDE levels show
+  their ends there. For a neat, aligned tower, front + side views CAN
+  resolve every slot; occlusion, recessed blocks, perspective and missed
+  detections can still leave slots UNKNOWN (D15). Back/opposite views and
+  operator confirmation close the remaining gaps.
+
+6.2 SLOT STATES AND PROVENANCE
+  Each slot has state + source:
+    PRESENT_OBSERVED   seen directly (SAM box + image check), with view id
+    EMPTY_OBSERVED     gap seen directly
+    PRESENT_CONFIRMED  operator confirmed (click / voice)
+    EMPTY_CONFIRMED    operator confirmed
+    INFERRED           derived by rule (e.g., recessed block seen through gap)
+    UNKNOWN            not yet determined
+  Every change creates a new scene version. Nothing is overwritten silently.
+
+6.3 FROM PHOTO TO SLOTS (slot check)
+  Step 1  SAM 3.1 on the head-on photo, prompt "wooden block" -> boxes.
+  Step 2  Tower bounds = union of boxes, refined by the widest bottom rows.
+  Step 3  Row clustering: group boxes by vertical centre into levels;
+          level height = tower height / level count (count from rows,
+          sanity-checked against measured block height).
+  Step 4  Per level, orientation from box aspect ratio:
+          end face ~ 2.5:1.5 (~1.7); long face ~ 7.5:1.5 (~5).
+  Step 5  ENDS levels: map each end box to slot L/M/R by its x position
+          relative to tower bounds. A detected box -> PRESENT_OBSERVED.
+          No box -> the slot is UNKNOWN by default (a miss is not proof of
+          absence). It becomes EMPTY_OBSERVED only with positive evidence:
+          the background (wall colour) or a recessed block face is visible
+          through the gap AND a re-check (SAM on a close crop of that
+          level) also finds no block. Otherwise it stays UNKNOWN, and the
+          ask-for-view / operator-confirm flow resolves it.
+  Step 6  SIDE levels (front view): long face present -> F = PRESENT;
+          M and B = UNKNOWN. Long face absent and recessed wood visible ->
+          F = EMPTY, M/B = UNKNOWN. Resolved later by the side view.
+  Step 7  Glasses frames: only head-on, sharp frames (marker angle < ~20
+          degrees, Laplacian sharpness above threshold); for weak frames,
+          run SAM on per-level crops to improve recall.
+  Evidence so far: clean tower, phone head-on, SAM found 35/36 visible
+  faces per view. That is face detection, NOT yet proof of correct
+  54-slot reconstruction on altered towers - measured in 12.3a.
+
+6.4 STABILITY CHECK (model assessment; D5)
+  Model: rigid blocks, gravity, no adhesion. For each interface between
+  level i and level i+1 (bottom to top), after the proposed removal:
+    support polygon = convex hull of all contact rectangles between
+                      remaining blocks of level i and level i+1
+                      (block footprints intersect -> contact rectangle)
+    load COM       = centre of mass of every block above the interface
+                      (equal masses unless measured otherwise)
+    margin         = signed distance from load COM (projected on xy) to
+                      the hull boundary; positive = inside
+  Second check (v1.1) - per-block local support: for every block, the
+  centre of mass of that block plus everything resting on it (directly or
+  through blocks above) must lie inside the hull of ITS OWN contacts with
+  the level below. This catches a block that loses support locally even
+  when the layer-level check passes (mainly matters for misaligned or
+  offset blocks).
+  Assessment = worst (minimum) margin over both checks:
+    margin >= +M_SAFE              -> PREDICTS STAND
+    margin <= -M_FALL              -> PREDICTS FALL (report the critical
+                                      interface or block)
+    otherwise                      -> INCONCLUSIVE
+  Thresholds: M_SAFE = 4 mm, M_FALL = 1 mm are STARTING PARAMETERS ONLY,
+  not confidence limits. They are tuned on calibration trials and then
+  frozen before evaluation trials (D17).
+  Also report the critical interface ("level 9 now rests only on its left
+  block") - this is what the agent explains.
+  Sanity cases (unit tests; idealised, perfectly aligned 7.5 cm level).
+  Verified numerically on Oct 28 with this method:
+    - Full tower / middle block removed : margin +37.5 mm -> PREDICTS STAND
+    - One side block removed            : +12.5 mm        -> PREDICTS STAND
+    - Both side blocks removed          : +12.5 mm        -> PREDICTS STAND
+    - Middle + one side removed         : -12.5 mm        -> PREDICTS FALL
+  These hold for an aligned tower. Real outcomes also depend on block
+  offsets, height differences and how the blocks above are supported - so
+  physical trials, not these cases, decide whether the model is useful.
+  Known limits (state honestly): real blocks differ in height (some carry
+  no load), pulling adds friction and contact forces, the upper stack is
+  not perfectly rigid, contact mechanics are richer than a support-polygon
+  test. INCONCLUSIVE exists for exactly these reasons.
+  Upgrade path if trials show systematic misses: measure per-level offsets
+  from the photos and use real block positions instead of ideal slots.
+  Removal protocol for trials: one finger, slow straight push along the
+  block's long axis; tower settles 3 s before outcome is read.
+
+6.5 ASK ONLY WHEN IT MATTERS (value of information; D6)
+  Given a proposed removal and the set U of UNKNOWN slots:
+    1. Evaluate the verdict for the plausible fills of U (each unknown
+       present/empty; cap combinations, prioritise slots at or above the
+       removal level and in the critical interfaces).
+    2. If all fills give the same verdict -> answer, noting the assumption.
+    3. If verdicts differ -> pick the unknown slot whose resolution splits
+       the outcomes most; map it to the view that reveals it (SIDE levels
+       -> side view; back slots -> back view) -> ASK for that view.
+    4. If the operator cannot provide it -> answer INCONCLUSIVE and
+       say why.
+  Muse phrases the request and the explanation. Code makes the decision.
+
+6.6 PREDICTION LOCK
+  Before any physical action the system writes a record:
+    {scene_version, scene_hash, action, assumptions, verdict, margins,
+     critical_interface, model_versions, timestamp_utc}
+  SHA-256 over the canonical JSON = fingerprint. UI shows "PREDICTION
+  LOCKED 23:41:07  #a3f9c2". Records are append-only (predictions.jsonl).
+  Corrections create new records that reference the old one.
+  What the fingerprint does and does not prove (v1.1): it shows a saved
+  record was not changed afterwards. On its own it does NOT prove the
+  record existed before the removal - a hash and a local timestamp could
+  be generated later. Timing is proven by:
+    1. a continuous, unedited recording with the locked prediction on
+       screen before the action,
+    2. the retained event log and raw source video, and
+    3. the repo and trial records showing how the prediction was made.
+  Optional (COULD, C6): independent timestamp - push each lock record to
+  the GitHub repo (server-side commit time) or an RFC 3161 timestamp
+  service before the removal. Never describe the hash as tamper-proof.
+
+6.7 PHYSICAL OUTCOME (D16)
+  v1: OPERATOR-CONFIRMED. After the removal and a 3 s settle, the operator
+  records OBSERVED STAND / OBSERVED FALL / UNCLEAR (button or voice). The
+  before/after frames and the full video are retained and linked. The UI
+  labels the source "operator-confirmed, video retained".
+  Later (optional): automatic assessment from before/after frames using
+  SAM 3.1. A shrinking box is NOT a reliable collapse definition on its
+  own (partial collapse, lean, camera bump, a hand in view), so the
+  automatic check must return UNCLEAR whenever it is not decisive, and it
+  never overrides the operator.
+  Outcome record links to the prediction fingerprint and stores the
+  comparison: MATCH / MISMATCH / NOT COMPARABLE (inconclusive or unclear).
+
+6.8 EVIDENCE MAP AND EXTRACTION PLANNING
+  Evidence map (v1.1, replaces "danger map"): for every present block, run
+  6.4 together with 6.5 and show one of three states on hover and as a
+  colour + pattern + icon (colour is never the only cue):
+    "Model predicts stands"
+    "Model predicts fall"
+    "Need more information" -> a glowing line points to the side of the
+       tower whose view would resolve it (from 6.5). As the operator walks
+       round with the glasses, the missing region fills in and every
+       affected block's state updates live.
+  This is the signature interaction: the AI directs the human to gather
+  exactly the evidence that resolves its uncertainty.
+  Extraction planning (SHOULD, gated): goal = set of blocks to clear (e.g.,
+  those caging the "survivor"). Beam search over removal sequences (depth
+  <= 3), each step must PREDICT STAND with margin; score = minimum margin
+  along the path. The scene is re-checked from fresh photos after every
+  physical step (errors accumulate otherwise). Muse Wonder explains the
+  plan and narrates guidance.
+  Reliability gate: the planner appears in the video only if 4 of 5 full
+  rehearsal runs complete with every step matching reality.
+
+6.9 LIVE TWIN (UI)
+  three.js scene of 54 slot boxes. Visual states:
+    UNKNOWN = translucent ghost; OBSERVED = solid wood; CONFIRMED = solid
+    + tick badge; INFERRED = hatched; selected = outline glow;
+    predicted motion = luminous trails (labelled simulation).
+  Each slot animates ghost -> solid when its state changes: this is the
+  "tower builds itself" effect and it is truthful by construction.
+
+6.10 GLASSES CAPTURE STAGES
+  Stage A  Tripod front + side photos -> full twin.          (MUST)
+  Stage B  Agent requests a side; operator looks; glasses photo fills the
+           missing slots.                                       (SHOULD)
+  Stage C  360-degree walk-around: ArUco marker per plate side gives face
+           id + angle; auto-capture head-on frames; the twin fills in
+           progressively and clearly marks observed vs not-yet-observed
+           regions. Final stretch milestone; preserves the original
+           vision.                                              (COULD, C1)
+  Stage D  Field-operator experiment: the same "I can't see X - show me
+           that side" interaction on a simple non-hazardous assembly
+           (e.g., a bracket with a hidden fastener).            (COULD, C5)
+  Separate, optional: SAM 3D produces an ESTIMATED visual reconstruction,
+  shown beside (never instead of) the block-based twin.
+
+6.11 VOICE LOOP
+  In : glasses audio (PCM16, 16 kHz) -> laptop -> Muse Voice Transcribe
+       realtime WebSocket (server VAD) -> transcript events.
+  Out: agent reply text -> TTS clip (laptop) -> phone (plays to glasses)
+       + laptop speakers/OBS + caption. One clip, two destinations.
+
+==============================================================================
+7. DATA MODEL AND MODULE CONTRACTS
+==============================================================================
+
+7.1 CORE TYPES (Python dataclasses; JSON-serialisable)
+  Slot     {level:int, index:int (0..2), orientation:"ENDS"|"SIDE",
+            state:SlotState, source:{kind, view_id, detail}, updated_at}
+  Scene    {version:int, levels:[Level], block_dims_mm, created_from:[view
+            ids], hash}
+  View     {view_id, device:"phone"|"glasses", face:"front"|"left"|...,
+            image_path, sam_raw_path, angle_deg?, sharpness?}
+  Action   {type:"remove", level, index, method:"push_long_axis"}
+  Verdict  {result:"PREDICTS_STAND"|"PREDICTS_FALL"|"INCONCLUSIVE"
+            |"NEEDS_VIEW", min_margin_mm,
+            critical_interface, per_interface:[...], assumptions:[...]}
+  Lock     {fingerprint, scene_hash, action, verdict, ts_utc, ...}
+  Outcome  {fingerprint, observed:"OBSERVED_FALL"|"OBSERVED_STAND"|
+            "UNCLEAR", source:"OPERATOR"|"AUTO", comparison:"MATCH"|
+            "MISMATCH"|"NOT_COMPARABLE", evidence_paths, ts_utc}
+
+7.2 KEY FUNCTIONS (contracts; pure where possible)
+  sam.segment_image(path, prompt) -> SamResult{boxes, masks?, raw_path,
+                                                latency_s}
+  scene.locate.find_levels(boxes, image) -> [RowBand]
+  scene.slots.classify(view, row_bands, boxes, image) -> [SlotObservation]
+  scene.merge.apply(scene, observations) -> Scene (new version)
+  physics.stability.evaluate(scene, action, params) -> Verdict
+  physics.planner.evidence_map(scene) -> {(level,index): Verdict|AskView}
+  physics.planner.plan(scene, goal, depth) -> [Action]
+  physics.voi.decide(scene, action) -> Answer | AskView{slot, face, reason}
+  evidence.ledger.lock(scene, action, verdict) -> Lock
+  evidence.outcome.record(fingerprint, observed, source, media) -> Outcome
+  evidence.outcome.auto_assess(before_img, after_img) -> suggestion or
+                                                       UNCLEAR (later)
+  agent.policy.handle_utterance(text, context) -> Reply{text, ui_events}
+  tts.speak(text) -> AudioClip{wav_path, duration_s}
+
+7.3 PHONE <-> LAPTOP PROTOCOL (WebSocket JSON envelope)
+  {type, seq, ts_ms, payload}
+  phone -> laptop: hello, frame{jpeg_b64, w, h, source}, photo{...},
+                   audio{pcm16_b64, rate:16000}, button{kind}, status
+  laptop -> phone: capture_photo{source}, play_audio{wav_b64}, set_stream
+                   {quality, fps}, ping
+  Frames at 1-2 fps are enough. Photos on demand at full resolution.
+
+==============================================================================
+8. META TECHNOLOGY MAP
+==============================================================================
+  Need                         Model / tool              Cost / latency
+  ---------------------------- ------------------------- ------------------
+  Find blocks in photos        SAM 3.1 (sam-3.1)         $2.50/1000 images;
+                                                         3-7 s per photo
+  Outcome check (before/after) SAM 3.1                   same
+  Planning, explanation,       Muse Wonder               $4 in / $20 out per
+  judgement over scene text    (muse-wonder-1.0)         1M tokens; measure
+                                                         latency on text
+  Fast conversational turns    Muse Spark 1.3            $1.25 / $4.25 per
+                               (muse-spark-1.3)          1M tokens
+  Speech to text               Muse Voice Transcribe     $0.18 per hour;
+                               (muse-voice-transcribe-   realtime stream
+                               1.0)
+  Visual 3D twin / finale      SAM 3D Objects (Meta open ~$0.02 per run;
+                               model) via fal.ai          ~16 s
+  Wearable camera + mic + spk  Meta Adventurer glasses   DAT 1.0 runtime
+                               + Device Access Toolkit   installed
+  Not used: Muse Wonder Full (needs Muse Code plan), Contributor tiers
+  (inputs used for training), Muse Image (no role), Neural Band.
+  TTS: Meta API has no text-to-speech model; use a laptop TTS (decision
+  in Section 14) and disclose it.
+  Budget estimate for the whole build: < $50 API spend.
+
+==============================================================================
+9. WHAT IS DONE SO FAR (EVIDENCE)
+==============================================================================
+Day 1-2 (Oct 26-27): concept exploration, external review, pivot from
+pendulum/ball to block tower; framing settled on physical foresight.
+
+Day 3 (Oct 28) feasibility tests - ALL PASSED or adjusted:
+  T0 Toolchain     Android Studio 2026.2.1, Git 2.55, Gradle 8.14.1 with
+                   JVM 21. Meta CameraAccess sample built and installed on
+                   Galaxy S25 (SM-S938U) via USB. local.properties uses
+                   mwdat_application_id=0 / mwdat_client_token=0 (Developer
+                   Mode).
+  T1 Glasses       Model "Adventurer 02FR" (not on Meta's published list)
+                   - initially "glasses need an update"; fixed by installing
+                   the DAT runtime from Meta AI app Developer Mode (DAT SDK
+                   1.0.0.0 on glasses). Session + live preview work.
+                   Meta AI app 296.1.0.25.165, Developer Mode ON.
+  T2 Photos        Phone: excellent. Glasses photo capture 1080x1440: good
+                   head-on, poor at an angle; stream 504x896: coarse.
+                   Lesson: get within 40-50 cm, head at tower mid-height.
+  T3 SAM 3.1       Single-image segmentation works (input_image + file_id).
+                   Messy tower: 31-36 detections/photo; glasses weaker on
+                   long faces. Clean 18-level tower, phone, head-on:
+                   35 of 36 visible faces in BOTH front and side views.
+                   3-7 s per photo.
+  T4 Muse Wonder   On a raw photo: correctly marked hidden slots UNKNOWN and
+                   requested "rotate 90 degrees ... side view". But 217 s,
+                   20,592 reasoning tokens (~$0.43/call), assumed perfect
+                   alternation (prompt bias) and miscounted by ~1 level.
+                   -> Decision D4/D7.
+  T5 Voice in      Muse Voice Transcribe playground: three demo commands
+                   transcribed word-perfect. API is a realtime WebSocket
+                   (wss://api.meta.ai/v1/asr/realtime, PCM16 mono 16/24 kHz).
+  T6 Voice out     TTS audio through the glasses: loud and clear; the
+                   camera session and preview KEPT RUNNING.
+  T7 SAM 3D        fal.ai fal-ai/sam-3/3d-objects. Prompt "tower" failed
+                   (no mask); "stack of wooden blocks" worked in 16.5 s.
+                   Output GLB: 10 MB, ~253k vertices / ~505k faces, vertex
+                   colours, correct proportions; back side is invented.
+                   -> Visual use only (D12); decimate ~10x for the browser.
+  Reproducibility: these results count only once they are reproduced by
+                   scripts in the actual build (Thu task). Until then they
+                   are manual test observations.
+  Assets in repo : test_photos/ (messy tower phone+glasses, clean_front.jpg,
+                   clean_side.jpg, combined_scene.glb), sam_tests/ (overlays,
+                   raw outputs, Muse response), test_tower_sam.py,
+                   test_muse.py, earlier pendulum work (untouched).
+  Environment    : evidence-os\.venv (Python 3.14) now has requests,
+                   python-dotenv, pillow. .env holds MODEL_API_KEY.
+
+==============================================================================
+10. BUILD PLAN
+==============================================================================
+
+10.1 SCOPE TIERS
+  MUST (the submission fails without these)
+    M1 Tripod scan (front + side, more views if needed) -> grid twin with
+       provenance; ambiguous slots stay UNKNOWN (D15)
+    M2 Model assessment for a selected block (layer check + per-block
+       check), with margins and a plain-language reason
+    M3 Prediction lock + evidence ledger + OPERATOR-CONFIRMED outcome with
+       video retained (D16)
+    M4 At least one PREDICTS STAND and one PREDICTS FALL, both matching
+       reality, in continuous unedited takes
+    M5 Evidence map with "need more information" pointer: ask-for-view only
+       when a hidden slot would change the assessment (signature moment)
+    M6 Voice in and voice out (laptop mic acceptable as fallback)
+    M7 Three-panel UI with live twin and evidence trace
+    M8 Trials: >= 15 calibration trials (tuning) + >= 20 NEW evaluation
+       trials with frozen thresholds; reported separately (D17)
+    M9 Slot-reconstruction accuracy measured on >= 5 altered towers (12.3a)
+    M10 The 3-minute video and the repo README
+  SHOULD
+    S1 Glasses provide the requested view (Stage B)
+    S2 Voice in/out through the glasses (in-ear guidance)
+    S3 SAM 3D "photo becomes 3D" opening (labelled estimated)
+    S4 Multi-step "survivor" extraction plan - in the video ONLY if it
+       passes the reliability gate (6.8)
+  COULD (in priority order)
+    C1 360-degree glasses walk-around filling the twin (Stage C) - the
+       original vision; first choice for the video's "wow slot"
+    C2 Predicted-vs-real replay overlay
+    C3 "Beyond blocks" SAM 3D finale with everyday objects
+    C4 Capture-button "confirm" step
+    C5 Field-operator experiment (Stage D)
+    C6 Independent timestamp for lock records (6.6)
+    C7 Automatic outcome assessment that returns UNCLEAR when unsure
+
+10.2 DAY-BY-DAY (each day ends with a working, committed system)
+  Thu Oct 29  FOUNDATION + CORE
+    - Eligibility check (O5/R2) first thing.
+    - git init + private GitHub repo; package layout (5.4); config, log,
+      run folders; move test scripts to scripts/.
+    - Re-run the Day-3 smoke checks as repo scripts (SAM call, Muse call,
+      glasses session) so every reported result is reproducible in the
+      actual build.
+    - Measure blocks; set dimensions in config.
+    - Scene model + slot check (UNKNOWN by default) on clean_front/side.
+    - stability.py: layer check + per-block check + unit tests (6.4).
+    - CLI: python -m laplace.cli assess --level 9 --index 1
+    - Start CALIBRATION trials (label them as such).
+    DONE WHEN: two clean photos -> correct full-tower JSON with no false
+    EMPTY slots; unit tests green; first calibration trials logged.
+  Fri Oct 30  EVIDENCE + UI + CALIBRATION
+    - Ledger, prediction lock, operator-confirmed outcome + video link.
+    - FastAPI server + UI: three panels, live twin, slot states, assessment
+      card, evidence trace. Click a block -> assessment.
+    - VOI logic + evidence map with "need more information" pointer (M5).
+    - Reconstruction test on >= 5 altered towers (M9).
+    - Finish >= 15 calibration trials; tune thresholds; FREEZE them
+      (commit + tag "thresholds-v1").
+    DONE WHEN: click block -> lock -> pull -> operator outcome -> MATCH/
+    MISMATCH shown, end to end in the UI; thresholds frozen.
+  Sat Oct 31  PHONE APP + VOICE + AGENT + EVALUATION STARTS
+    - Fork CameraAccess -> phone_app: uplink frames/photos/audio, downlink
+      audio; phone-camera stills.
+    - ASR realtime client; TTS; one-clip-two-destinations audio.
+    - Agent: tools + routing (Spark for turns, Wonder for plan/explain);
+      measure Wonder latency on scene text with low reasoning effort.
+    - First >= 10 EVALUATION trials (new configurations, frozen params).
+    DONE WHEN: spoken "what if I pull this one?" -> spoken assessment in
+    the glasses + caption, with the scene updating.
+  Sun Nov 1   GLASSES VIEWS + CORE REHEARSAL
+    - Stage B: agent asks for a side; glasses photo fills slots; evidence
+      map updates live.
+    - Evaluation trials to >= 20.
+    - Rehearse the CORE storyboard (4.1) twice. Fix what breaks.
+    - If time: survivor planner (S4) + its 5-run reliability gate.
+    DONE WHEN: core storyboard runs end to end without touching the
+    keyboard (except setup).
+  Mon Nov 2   STRETCH + VISUALS
+    - If Sunday is green: C1 360-degree walk-around. Else: reliability.
+    - SAM 3D opening asset (S3); finale test (C3) if time.
+    - README draft with the trial table (evaluation set only, calibration
+      reported separately), architecture diagram, limitations.
+    DONE WHEN: feature freeze at 9 PM. Only fixes after this.
+  Tue Nov 3   REHEARSE + RECORD
+    - 3+ continuous takes per act; second camera; OBS; captions.
+    - Rough cut of the video.
+  Wed Nov 4   SUBMIT
+    - Final edit, README final, repo review, submit by NOON ET.
+    - Afternoon buffer for upload problems. Hard deadline 9:00 PM ET.
+  Nov 5-8     Prepare live finals: repeatable demo checklist, spare
+              tower, charged devices, network fallback.
+
+10.3 DAILY RHYTHM
+  Morning: pick the day's DONE-WHEN. Build in small steps; run tests after
+  each step; commit. Evening: physical trials, update Section 9 and the
+  decision log, write tomorrow's first task.
+
+==============================================================================
+11. ENGINEERING PRINCIPLES
+==============================================================================
+These are binding for every contributor and every coding agent.
+
+11.1 MODULAR BY DEFAULT
+  - One responsibility per module (Section 5.4). Perception does not know
+    about the UI; physics does not call APIs; the agent does not compute
+    physics, it calls the physics tool.
+  - Pure functions for all logic that can be pure (geometry, stability,
+    slot classification, VOI, planning). Side effects (network, files,
+    devices) live at the edges in clients/ and server/.
+  - Interfaces are typed (dataclasses + type hints). Module contracts in
+    Section 7 are the API; change them deliberately and update this doc.
+
+11.2 STEP BY STEP
+  - Build the thinnest end-to-end slice first, then deepen.
+  - Every step has a DONE-WHEN check that can be demonstrated in under a
+    minute (a test passing, a CLI output, a screenshot).
+  - One change at a time; run tests; commit with a clear message. Never
+    stack three untested changes.
+  - If a step takes more than 2x its estimate, stop, write down why, and
+    pick the fallback from Section 13.
+
+11.3 DEBUG STATEMENTS AND OBSERVABILITY
+  - Python logging everywhere; no bare print in library code.
+  - Levels: DEBUG (internals), INFO (milestones), WARNING (degraded but
+    continuing), ERROR (failed operation). LAPLACE_LOG_LEVEL in .env.
+  - Log at every boundary: each API request/response (model, latency,
+    tokens, estimated cost, request id), each scene version change, each
+    verdict with margins, each WebSocket message type, each device state
+    change on the phone (Android Logcat tag "LAPLACE").
+  - Every session writes a run folder: runs/<timestamp>/ with inputs,
+    raw API outputs, scene versions, predictions.jsonl, outcomes.jsonl,
+    logs.jsonl. Any bug can be replayed from its run folder.
+  - Correlation id per user request, carried through ASR -> agent ->
+    physics -> TTS -> UI.
+  - Never log secrets. Mask keys. No personal data beyond what is needed.
+
+11.4 FAIL LOUD, NEVER FAKE
+  - Errors surface as errors or explicit incomplete states in the UI.
+  - No placeholder "success" values. No silent fallbacks to canned data.
+  - Fixture/test data is clearly labelled and never used in demo runs.
+
+11.5 CONFIGURATION AND SECRETS
+  - All tunables (thresholds, margins, prompts, ports, model ids) in
+    config.py backed by .env. No magic numbers in code.
+  - .env and runs/ are git-ignored. API keys never reach the phone app.
+
+11.6 VERSION CONTROL
+  - Private GitHub repo. Small commits. main always runs.
+  - Tag working milestones (v0.1-core, v0.2-ui, ...). Tag the submitted
+    version.
+
+==============================================================================
+12. TESTING STRATEGY
+==============================================================================
+12.1 UNIT TESTS (pytest, no network, fast) - isolate the hard parts
+  - SAM output parser: boxes/masks from saved raw text.
+  - Row clustering and orientation detection: saved boxes for clean_front
+    and clean_side -> expected 18 levels, correct orientations.
+  - Slot classification: expected 54 PRESENT for the clean tower; a
+    missing box WITHOUT positive gap evidence stays UNKNOWN (never
+    EMPTY); a gap with background visible + crop re-check -> EMPTY.
+  - Stability: per-block local-support check on offset/misaligned
+    synthetic towers.
+  - Geometry: contact rectangles, convex hull, signed distance.
+  - Stability: the sanity cases in 6.4 plus edge cases (top level,
+    bottom level, single remaining block, unknown slots).
+  - VOI: unknown that does not matter -> answer; unknown that flips the
+    verdict -> ask for the correct face.
+  - Ledger: lock fingerprint is stable; locked records cannot be changed;
+    outcome links to the right prediction.
+  - Protocol: message encode/decode round trips.
+12.2 FIXTURES
+  - tests/fixtures/: clean photos + saved SAM raw outputs (replay without
+    API cost), synthetic towers as JSON, recorded audio snippet.
+12.3a SLOT-RECONSTRUCTION ACCURACY (M9)
+  - Build >= 5 altered towers (blocks removed in known places, write the
+    true layout down first). Scan with the normal flow.
+  - Per slot, compare with truth. Report: correct, wrong, UNKNOWN.
+    The critical metric is FALSE EMPTY (a present block reported empty)
+    and FALSE PRESENT - both must be zero for the demo configurations.
+12.3 INTEGRATION TESTS (opt-in: pytest -m integration)
+  - Real SAM call on clean_front.jpg -> >= 34 detections.
+  - Real Muse call on scene text -> valid structured reply, latency logged.
+  - ASR on a recorded clip -> expected words.
+12.4 PHYSICAL TRIALS (the real test) - TUNING SEPARATE FROM EVALUATION
+  - Calibration set (>= 15): used to tune M_SAFE / M_FALL and fix bugs.
+  - Freeze thresholds and code version (tag) before evaluation.
+  - Evaluation set (>= 20): NEW configurations, frozen parameters.
+  - Report for each set: number of trials, matches, mismatches,
+    inconclusive predictions (separately), unclear outcomes, the setups
+    and removal method, and every change made after tuning.
+  - Any internal target (e.g., 80% agreement) is a working goal, not a
+    safety claim; small samples do not give reliable accuracy estimates.
+12.5 DEMO REHEARSAL CHECKLIST
+  - Devices charged, glasses DAT session starts, Wi-Fi up, firewall port
+    open, API keys valid, OBS scenes ready, spare built tower.
+
+==============================================================================
+13. RISK REGISTER
+==============================================================================
+  #  Risk                             Level  Trigger / signal        Fallback
+  -- -------------------------------- ------ ----------------------- ------------------------
+  R1 Predictions disagree with        HIGH   poor agreement in       Widen INCONCLUSIVE band
+     reality                                 calibration trials      (before freezing); use
+                                             by Fri                  measured block offsets;
+                                                                     show misses honestly
+  R2 Eligibility: rules exclude       HIGH   Official Rules wording  Read rules now; ask
+     "government-affiliated                  covers consultants      organisers in Discord
+     individuals"                            serving government      before investing more
+  R3 Glasses image too weak for       MED    Stage B recall < 90%    Per-level crops; get
+     slot check                                                      closer; tripod does the
+                                                                     scan, glasses only ask
+  R4 Phone app uplink slow/unstable   MED    > 2 s frame lag         Photos only (no stream);
+                                                                     USB tether; phone-only
+  R5 Muse latency too high live       MED    > 10 s per turn         Spark for all turns;
+                                                                     Wonder only for planning,
+                                                                     pre-computed before act
+  R6 Glasses in-stream audio (beta)   MED    no audio frames         HFP mode; clip-on mic
+     fails                                                           to laptop
+  R7 ASR false triggers from noise    LOW    spurious transcripts    Push-to-talk via capture
+                                                                     button
+  R8 Schedule slip (solo)             MED    a day's DONE-WHEN missed Drop from the bottom:
+                                                                     C7..C2, then S4, S3, S2;
+                                                                     C1 survives longest
+  R9 SAM 3D quality/speed             LOW    poor mesh               Skip finale; keep opening
+                                                                     or drop entirely
+  R10 Live finals failure (Nov 9)     MED    rehearsal failures      Spare tower, checklist,
+                                                                     recorded backup clip
+                                                                     clearly labelled
+  R11 Brand/IP (logos on blocks)      LOW    logos visible           Logos inward; blur
+  R12 False EMPTY slot (missed        MED    M9 test shows any       UNKNOWN by default;
+      detection read as a gap)               false empty             crop re-check; operator
+                                                                     confirm before locking
+  R13 Overstated evidence             MED    claims not backed by    Repo scripts reproduce
+      (timing, accuracy, tests)              repo artefacts          every reported result;
+                                                                     wording per 2.4 / 6.6
+
+==============================================================================
+14. OPEN DECISIONS
+==============================================================================
+  O1 Final product name: LAPLACE vs Evidence OS (folder name) vs other.
+     Recommendation: LAPLACE (memorable, ties to "foresight").
+  O2 TTS voice: Windows built-in (offline) vs a neural cloud voice.
+     Recommendation: test both Sat; pick the clearer one; disclose.
+  O3 Second camera for the wide shot (borrow a phone/webcam).
+  O4 Survivor prop: small figure; position in a void near the base.
+  O5 Read the Official Rules today: eligibility (R2), finalist count,
+     exact submission requirements (video length, repo, licence).
+
+==============================================================================
+15. APPENDIX
+==============================================================================
+15.1 META MODEL API NOTES (verified in our tests)
+  Base URL       https://api.meta.ai/v1   Auth: Bearer MODEL_API_KEY
+  Upload         POST /files  (multipart, purpose=user_data) -> {id}
+  SAM 3.1        POST /responses, model "sam-3.1", stream true,
+                 content: [{type:input_text, text:<prompt>},
+                           {type:input_image|input_video, file_id}]
+                 metadata.mask_encoding "lossless"
+                 Output text: <Nf>ID<|box;x1=..;y1=..;x2=..;y2=..;w=W;h=H|>
+                 <|mask;x=..;y=..;data=...|>  (box coords in W x H space;
+                 mask encoding still to be decoded - boxes suffice so far)
+  Muse           POST /responses, model "muse-wonder-1.0" | "muse-spark-1.3"
+                 (OpenAI Responses-compatible; reasoning effort parameter
+                 to verify: reasoning.effort or reasoning_effort)
+  ASR            wss://api.meta.ai/v1/asr/realtime, model
+                 muse-voice-transcribe-1.0, PCM16 mono 16 or 24 kHz,
+                 server VAD; events include partial and completed
+                 transcripts.
+  SAM 3D         fal.ai fal-ai/sam-3/3d-objects (image + text prompt);
+                 use prompt "stack of wooden blocks"; returns GLB + splat.
+
+15.2 ENVIRONMENT
+  Windows laptop: .venv (Python 3.14). Activate:
+      cd C:\Users\ajayg\evidence-os ; .venv\Scripts\Activate.ps1
+  Packages so far: requests, python-dotenv, pillow. Planned: fastapi,
+  uvicorn, websockets, numpy, opencv-python (incl. aruco), shapely or own
+  hull code, pytest, trimesh (GLB decimation).
+  Android: Android Studio 2026.2.1; sample at
+      C:\Users\ajayg\meta-wearables-dat-android\samples\CameraAccess
+  Glasses: Developer Mode ON in Meta AI app (Settings > App Info > tap
+  version 5x); DAT runtime installed from that screen. Only one dev-mode
+  app can be registered at a time.
+
+15.3 PHYSICAL RIG PROTOCOL
+  - Build with the loading sleeve; push each level flush.
+  - Logos facing inward.
+  - Tripod at tape marks, lens at tower mid-height, 50-70 cm.
+  - Front mark on plate faces the camera for "front"; rotate exactly 90
+    degrees for "side".
+  - Removal: one finger, slow push along the long axis; wait 3 s.
+  - Record every trial: config id, block, prediction fingerprint, outcome.
+
+==============================================================================
+REVISION HISTORY
+  v1.0  Oct 28  First full design and build plan.
+  v1.1  Oct 28  Applied external design review:
+                - Static check renamed "model assessment"; labels split into
+                  assessment / physical outcome / comparison (D5).
+                - Per-block local-support check added; thresholds marked
+                  as starting parameters; sanity cases verified numerically
+                  and scoped to aligned towers (6.4).
+                - Slots UNKNOWN unless evidence or confirmation supports
+                  them; dark patch is not proof of a gap (D15, 6.3).
+                - 360-degree walk-around restored as final stretch (C1) and
+                  field-operator experiment as C5 (D19, 6.10).
+                - Fingerprint described as integrity aid; timing proven by
+                  continuous recording; optional independent timestamp (6.6).
+                - Outcome operator-confirmed in v1 (D16, 6.7).
+                - Calibration vs evaluation trials separated (D17, 12.4).
+                - Evidence map with "need more information" pointer adopted
+                  as the signature interaction (M5, 6.8).
+                - Core video = stand + fall + missing-view; planner gated
+                  (D18, 4.1, 6.8).
+                - Slot-reconstruction accuracy test added (M9, 12.3a).
+                - Finalist count marked as unverified (2.1, O5).
+  Not adopted: none of the review's points were rejected. One nuance: the
+  layer check and per-block check agree for perfectly aligned towers; the
+  per-block check matters for offsets, so both are kept.
+
+END OF DOCUMENT
+==============================================================================
